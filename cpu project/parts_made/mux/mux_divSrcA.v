@@ -1,8 +1,8 @@
-module mux_opt_flag (
+module mux_divSrcA (
     input wire sel,
-    input wire  data_0, // flag GT 
-    input wire  data_1, // flag 0 
-    output wire data_out
+    input wire [31:0] data_0, // from A
+    input wire [31:0] data_1, // from MDR
+    output wire [31:0] data_out
 );
 
     always @(sel) begin
