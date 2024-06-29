@@ -1,11 +1,11 @@
 
 //incluindo vhd's dados pelo professor
-`include "../parts_given/Registrador.vhd"
-`include "../parts_given/RegDesloc.vhd"
-`include "../parts_given/ula32.vhd"
-`include "../parts_given/Memoria.vhd"
-`include "../parts_given/Instr_Reg.vhd"
-`include "../parts_given/Banco_reg.vhd"
+// `include "../parts_given/Registrador.vhd"
+// `include "../parts_given/RegDesloc.vhd"
+// `include "../parts_given/ula32.vhd"
+// `include "../parts_given/Memoria.vhd"
+// `include "../parts_given/Instr_Reg.vhd"
+// `include "../parts_given/Banco_reg.vhd"
 
 //incluindo MUX's feitos pelo grupo
 `include "../parts_made/mux/mux_ALU_A.v"
@@ -33,6 +33,7 @@
 `include "../parts_made/sizeLoad.v"
 `include "../parts_made/sizeStore.v"
 `include "../parts_made/srl.v"
+`include "../parts_made/PCLoadBox.v"
 
 
 module CPU (
@@ -56,6 +57,7 @@ module CPU (
 
     //Control Wires Single Register 
     wire            EPC_Load;
+    wire            PC_Load;
     wire            MDR_Load;
     wire            IR_Load;
     wire            HL_Load;
@@ -111,8 +113,7 @@ module CPU (
     wire [31:0]     mux_WD_Registers_Out;
     wire [31:0]     mux_High_Out;
     wire [31:0]     mux_Low_Out;
-    wire [31:0]     mux_A_Out;
-    wire [31:0]     mux_B_Out;
+    wire [31:0]     mux_divA_Out;
     wire [31:0]     mux_ShiftSrc_Out;
     wire [4:0]      mux_ShiftN_Out;
     wire [31:0]     mux_ALU1_Out; 
@@ -158,10 +159,17 @@ module CPU (
         mux_OptBranch_Out
     );
 
+    PCLoadBox PC_LoadBox_(
+        PCWrite,
+        PCWriteCond,
+        mux_OptBranch_Out,
+        PC_Load
+    );
+
     Registrador PC_(
         clk,
         reset,
-        PcWrite || (PCWriteCond && mux_OptBranch_Out), // PC_Load
+        PC_Load, // PC_Load
         mux_PC_Out,
         PC_Out
     );
@@ -172,7 +180,7 @@ module CPU (
         ALUOut_Out,
         A_Out,
         B_Out,
-        mux_Address_Out,
+        mux_Address_Out
     );
 
     mux_Mem_WD mux_wd_MEM_(
@@ -209,6 +217,7 @@ module CPU (
         clk,
         reset,
         EPC_Load,
+        ALU_Result,
         EPC_Out
     );
 
@@ -226,13 +235,13 @@ module CPU (
     SizeLoad load_size_(
         MDR_Out,
         Load_Size_selector,
-        Load_Size_OutUp
+        Load_Size_Out
     );
 
     Concat_OFFSET the_box2_(
-       RS,
-       RT,
        IMMEDIATE,
+       RT,
+       RS,
        The_Box2_Out
     );
 
@@ -248,7 +257,7 @@ module CPU (
        Sign_Extend1_32_Out,
        RegDesloc_Out,
        Shift_Left16_32_Out,
-       Load_Size_OutUp,
+       Load_Size_Out,
        ALUOut_Out,
        Low_Out,
        High_Out,
@@ -327,11 +336,11 @@ module CPU (
         DivOp,
         MDR_Out,
         A_Out,
-        mux_A_Out
+        mux_divA_Out
     );
 
     div div_(
-        mux_A_Out,
+        mux_divA_Out,
         B_Out,
         clk,
         reset,
@@ -350,7 +359,7 @@ module CPU (
         clk,
         reset,
         A_Load,
-        mux_A_Out,
+        Read_Data1_Out,
         A_Out
     );
 
@@ -358,7 +367,7 @@ module CPU (
         clk,
         reset,
         B_Load,
-        mux_B_Out,
+        Read_Data2_Out,
         B_Out
     );
 
@@ -436,14 +445,14 @@ module CPU (
         mux_ALU_Out_selector,
         Memory_Out,
         ALU_Result,
-        mux_ALUOut_Out
+        mux_ALUOut_Out 
     );
 
     Registrador ALUOut_(
         clk,
         reset,
         ALUOut_Load,
-        ALU_Result,
+        mux_ALUOut_Out, 
         ALUOut_Out
     );
 
@@ -462,13 +471,12 @@ module CPU (
         OPCODE,
         IMMEDIATE,
         OVERFLOW,
-        Zero_Div,
         DivZero,
 
         mux_MemWD_selector,
-        mux_divSrcA_selector;
+        mux_divSrcA_selector,
         mux_high_low_selector,
-        mux_ALU_Out_selector
+        mux_ALU_Out_selector,
         mux_ShiftSrc_selector,
         mux_ShiftN_selector,
 

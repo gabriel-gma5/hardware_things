@@ -12,9 +12,8 @@ input wire          DivZero,
 //Muxs (até 2 entradas)
 output reg          WriteMemoSrc,
 output reg          DivOp,
-output reg          writeHL,
 output reg          HLSrc,
-output reg          ALUOutSrc,
+output reg [1:0]    ALUOutSrc,
 output reg          ShiftSrc,
 output reg          ShiftAmt,
 
@@ -39,8 +38,8 @@ output reg          ALUOut_Load,
 
 //Write and Read Controllers
 output reg          RegWrite,
-output reg          StoreSizeCtrl,
-output reg [1:0]    LStoreSizeCtrl,
+output reg [1:0]    StoreSizeCtrl,
+output reg [1:0]    LoadSizeCtrl,
 output reg          MemWR,
 
 //Controlador Controllers
@@ -163,10 +162,11 @@ end
 
 always @(posedge clk) begin
     //RESET
-    if ((Reset_In == 1'b1) || state == state_Reset) begin
+    if ((Reset_In == 1'b1) || states == state_Reset) begin
         RegDst              =   2'b10;  
         RegSrc              =   3'b000; 
         RegWrite            =   1'b1; 
+
         EPC_Load            =   1'b0;
         MDR_Load            =   1'b0;
         IRWrite             =   1'b0;
@@ -174,12 +174,19 @@ always @(posedge clk) begin
         A_Load              =   1'b0;
         B_Load              =   1'b0;
         ALUOut_Load         =   1'b0;
+        AddressCtrl         =   3'b000;
+        ALUSrcA             =   2'b00; 
+        ALUSrcB             =   3'b001;
+        ALUOutSrc           =   2'b01;
+        ALU                 =   3'b00;
         MemWR               =   1'b0;
-        IRWrite             =   1'b1;        
+        IRWrite             =   1'b0;        
         PCWrite             =   1'b0;
         PCWriteCond         =   1'b0;
         FlagOption          =   1'b0;
         BranchOption        =   1'b0;
+        MultInit            =   1'b0;
+        DivInit             =   1'b0;
 
         //next state
         states = state_Fetch;
@@ -187,23 +194,23 @@ always @(posedge clk) begin
     end else begin
         AddressCtrl         =   3'b000;
         ALUSrcA             =   2'b00; 
-        ALUSrcB             =   3'b000;
+        ALUSrcB             =   3'b001;
         ALUOutSrc           =   2'b01;
-        ALU                 =   3'b00;
+        ALU                 =   3'b001;
         ALUOut_Load         =   1'b0;
         MemWR               =   1'b0;
         PCWrite             =   1'b0;
         PCWriteCond         =   1'b0;
         FlagOption          =   1'b0;
         BranchOption        =   1'b0;
-        Flagption           =   1'b0;
+        FlagOption          =   1'b0;
         EPC_Load            =   1'b0;
         MDR_Load            =   1'b0;
         IRWrite             =   1'b0;
+        RegWrite            =   1'b0;
         writeHL             =   1'b0;
         A_Load              =   1'b0;
         B_Load              =   1'b0;
-        ALUOut_Load         =   1'b0;
         
         MultInit            =   1'b0;
         DivInit             =   1'b0;
@@ -213,19 +220,20 @@ always @(posedge clk) begin
                 if (counter == 5'b00000 || counter == 5'b00001) begin
                     AddressCtrl         =   3'b000;
                     ALUSrcA             =   2'b00; 
-                    ALUSrcB             =   2'b01; 
+                    ALUSrcB             =   3'b001; 
                     ALU                 =   3'b001;
                     ALUOut_Load         =   1'b1;
                     MemWR               =   1'b0;
+                    MDR_Load            =   1'b1;
 
                     //next state
                     states = state_Fetch;
                     counter = counter + 5'b00001;
                 end else if (counter == 5'b00010) begin //IR Write State
                     PCSource            =   2'b00;
-                    PC_Load             =   1'b1;
                     IRWrite             =   1'b1;
                     PCWrite             =   1'b1;
+                    MDR_Load            =   1'b1;
 
                     //next state
                     states = state_Decode;
@@ -235,207 +243,211 @@ always @(posedge clk) begin
 
             //DECODE
             state_Decode: begin
-                ALUSrcA             =   2'b00;
-                ALUSrcB             =   2'b11;
-                ALU                 =   3'b001;
-                ALUOut_Load         =   1'b1;
-                A_Load              =   1'b1;
-                B_Load              =   1'b1;
-                //next state
-                counter = 5'b00000;
-                case (OPCODE) //Analisando OPCODE da operacao atual para definir o proximo estado
-                    //OP Tipo R
-                    Op_Type_r: begin
-                        case (Funct) //Analisando campo Funct do tipo R
-                            //Funct ADD
-                            Funct_Add: begin
-                                states = state_Add;
-                            end
+                if(counter == 5'b00000) begin
+                    counter = counter + 5'b00001;
+                end else if (counter == 5'b00001) begin
+                    ALUSrcA             =   2'b00;
+                    ALUSrcB             =   2'b11;
+                    ALU                 =   3'b001;
+                    ALUOut_Load         =   1'b1;
+                    A_Load              =   1'b1;
+                    B_Load              =   1'b1;
+                    //next state
+                    counter = 5'b00000;
+                    case (OPCODE) //Analisando OPCODE da operacao atual para definir o proximo estado
+                        //OP Tipo R
+                        Op_Type_r: begin
+                            case (Funct) //Analisando campo Funct do tipo R
+                                //Funct ADD
+                                Funct_Add: begin
+                                    states = state_Add;
+                                end
 
-                            //Funct AND
-                            Funct_And: begin
-                                states = state_And;
-                            end
+                                //Funct AND
+                                Funct_And: begin
+                                    states = state_And;
+                                end
 
-                            //Funct DIV
-                            Funct_Div: begin
-                                states = state_Div;
-                            end
+                                //Funct DIV
+                                Funct_Div: begin
+                                    states = state_Div;
+                                end
 
-                            //Funct MULT
-                            Funct_Mult: begin
-                                states = state_Mult;
-                            end
+                                //Funct MULT
+                                Funct_Mult: begin
+                                    states = state_Mult;
+                                end
 
-                            //Funct JR
-                            Funct_Jr: begin
-                                states = state_Jr;
-                            end
+                                //Funct JR
+                                Funct_Jr: begin
+                                    states = state_Jr;
+                                end
 
-                            //Funct MFHI
-                            Funct_Mfhi: begin
-                                states = state_Mfhi;
-                            end
+                                //Funct MFHI
+                                Funct_Mfhi: begin
+                                    states = state_Mfhi;
+                                end
 
-                            //Funct MFLO
-                            Funct_Mflo: begin
-                                states = state_Mflo;
-                            end
+                                //Funct MFLO
+                                Funct_Mflo: begin
+                                    states = state_Mflo;
+                                end
 
-                            //Funct SLL
-                            Funct_Sll: begin
-                                states = state_Sll;
-                            end
-                            
-                            //Funct SLLV
-                            Funct_Sllv: begin
-                                states = state_Sllv;
-                            end
+                                //Funct SLL
+                                Funct_Sll: begin
+                                    states = state_Sll;
+                                end
+                                
+                                //Funct SLLV
+                                Funct_Sllv: begin
+                                    states = state_Sllv;
+                                end
 
-                            //Funct SLT
-                            Funct_Slt: begin
-                                states = state_Slt;
-                            end
+                                //Funct SLT
+                                Funct_Slt: begin
+                                    states = state_Slt;
+                                end
 
-                            //Funct SRA
-                            Funct_Sra: begin
-                                states = state_Sra;
-                            end
+                                //Funct SRA
+                                Funct_Sra: begin
+                                    states = state_Sra;
+                                end
 
-                            //Funct SRAV
-                            Funct_Srav: begin
-                                states = state_Srav;
-                            end
+                                //Funct SRAV
+                                Funct_Srav: begin
+                                    states = state_Srav;
+                                end
 
-                            //Funct SRL
-                            Funct_Srl: begin
-                                states = state_Srl;
-                            end
+                                //Funct SRL
+                                Funct_Srl: begin
+                                    states = state_Srl;
+                                end
 
-                            //Funct SUB
-                            Funct_Sub: begin
-                                states = state_Sub;
-                            end
+                                //Funct SUB
+                                Funct_Sub: begin
+                                    states = state_Sub;
+                                end
 
-                            //Funct BREAK
-                            Funct_Break: begin
-                                states = state_Break;
-                            end
+                                //Funct BREAK
+                                Funct_Break: begin
+                                    states = state_Break;
+                                end
 
-                            //Funct RTE
-                            Funct_RTE: begin
-                                states = state_RTE;
-                            end
+                                //Funct RTE
+                                Funct_RTE: begin
+                                    states = state_RTE;
+                                end
 
-                            //Funct Xchg
-                            Funct_Xchg: begin
-                                states = state_Xchg;
-                            end
+                                //Funct Xchg
+                                Funct_Xchg: begin
+                                    states = state_Xchg;
+                                end
 
-                            //Funct OR
-                            Funct_Or: begin
-                                states = state_Or;
-                            end
+                                //Funct OR
+                                Funct_Or: begin
+                                    states = state_Or;
+                                end
 
-                            //Funct XCHG
-                            Funct_Xchg: begin
-                                states = state_Xchg;
-                            end
+                                //Funct XCHG
+                                Funct_Xchg: begin
+                                    states = state_Xchg;
+                                end
 
-                            default: //erro de opcode
-                                states = state_Opcode404;
+                                default: //erro de opcode
+                                    states = state_Opcode404;
+                            endcase
+                        end
+
+                        //Op ADDI
+                        Op_Addi: begin
+                            states = state_Addi;
+                        end
+
+                        //Op ADDIU
+                        Op_Addiu: begin
+                            states = state_Addiu;
+                        end
+
+                        //Op BEQ
+                        Op_Beq: begin
+                            states = state_Beq;
+                        end
+
+                        //Op BNE
+                        Op_Bne: begin
+                            states = state_Bne;
+                        end
+
+                        //Op BLE
+                        Op_Ble: begin
+                            states = state_Ble;
+                        end
+
+                        //Op BGT
+                        Op_Bgt: begin
+                            states = state_Bgt;
+                        end
+
+                        //Op Divm
+                        Op_Divm: begin
+                            states = state_Divm;
+                        end
+
+                        //Op LB
+                        Op_Lb: begin
+                            states = state_Lb;
+                        end
+
+                        //Op LH
+                        Op_Lh: begin
+                            states = state_Lh;
+                        end
+
+                        //Op LUI
+                        Op_Lui: begin
+                            states = state_Lui;
+                        end
+
+                        //Op LW
+                        Op_Lw: begin
+                            states = state_Lw;
+                        end
+
+                        //Op SB
+                        Op_Sb: begin
+                            states = state_Sb;
+                        end
+
+                        //Op SH
+                        Op_Sh: begin
+                            states = state_Sh;
+                        end
+
+                        //Op SLTI
+                        Op_Slti: begin
+                            states = state_Slti;
+                        end
+
+                        //Op SW
+                        Op_Sw: begin
+                            states = state_Sw;
+                        end
+
+                        //Op J
+                        Op_J: begin
+                            states = state_J;
+                        end
+
+                        //Op JAL
+                        Op_Jal: begin
+                            states = state_Jal;
+                        end
+
+                        default:
+                            states = state_Opcode404;
                         endcase
                     end
-
-                    //Op ADDI
-                    Op_Addi: begin
-                        states = state_Addi;
-                    end
-
-                    //Op ADDIU
-                    Op_Addiu: begin
-                        states = state_Addiu;
-                    end
-
-                    //Op BEQ
-                    Op_Beq: begin
-                        states = state_Beq;
-                    end
-
-                    //Op BNE
-                    Op_Bne: begin
-                        states = state_Bne;
-                    end
-
-                    //Op BLE
-                    Op_Ble: begin
-                        states = state_Ble;
-                    end
-
-                    //Op BGT
-                    Op_Bgt: begin
-                        states = state_Bgt;
-                    end
-
-                    //Op Divm
-                    Op_Divm: begin
-                        states = state_Divm;
-                    end
-
-                    //Op LB
-                    Op_Lb: begin
-                        states = state_Lb;
-                    end
-
-                    //Op LH
-                    Op_Lh: begin
-                        states = state_Lh;
-                    end
-
-                    //Op LUI
-                    Op_Lui: begin
-                        states = state_Lui;
-                    end
-
-                    //Op LW
-                    Op_Lw: begin
-                        states = state_Lw;
-                    end
-
-                    //Op SB
-                    Op_Sb: begin
-                        states = state_Sb;
-                    end
-
-                    //Op SH
-                    Op_Sh: begin
-                        states = state_Sh;
-                    end
-
-                    //Op SLTI
-                    Op_Slti: begin
-                        states = state_Slti;
-                    end
-
-                    //Op SW
-                    Op_Sw: begin
-                        states = state_Sw;
-                    end
-
-                    //Op J
-                    Op_J: begin
-                        states = state_J;
-                    end
-
-                    //Op JAL
-                    Op_Jal: begin
-                        states = state_Jal;
-                    end
-
-                    default:
-                        states = state_Opcode404;
-                    endcase
-                end
+            end
 
             //OVERFLOW
             state_Overflow: begin
@@ -443,7 +455,7 @@ always @(posedge clk) begin
                     AddressCtrl         =   3'b011; //// 254
                     MemWR               =   1'b0; ////
                     ALUSrcA             =   2'b00; ////
-                    ALUSrcB             =   2'b01; ////
+                    ALUSrcB             =   3'b001; ////
                     ALU                 =   3'b010; ////
                     EPC_Load            =   1'b1; ////
 
@@ -473,7 +485,7 @@ always @(posedge clk) begin
                 if (counter == 5'b00000 || counter == 5'b00001 || counter == 5'b00010) begin
                     AddressCtrl         =   3'b010; ////
                     ALUSrcA             =   2'b00; ////
-                    ALUSrcB             =   2'b01; ////
+                    ALUSrcB             =   3'b001; ////
                     ALU                 =   3'b010; ////
 
                     //next state
@@ -503,7 +515,7 @@ always @(posedge clk) begin
                 if (counter == 5'b00000 || counter == 5'b00001 || counter == 5'b00010) begin
                     AddressCtrl         =   3'b100; ////
                     ALUSrcA             =   2'b00; ////
-                    ALUSrcB             =   2'b01; ////
+                    ALUSrcB             =   3'b001; ////
                     ALU                 =   3'b010; ////
 
                     //next state
@@ -629,6 +641,7 @@ always @(posedge clk) begin
                 end else if (counter == 5'b11111) begin
                     writeHL = 1'b1;
                     states = state_Fetch;
+                    counter = 5'b00000;
                 end else begin
                     states = state_MultDivRun;
                     counter = counter + 5'b00001;
@@ -759,8 +772,8 @@ always @(posedge clk) begin
             //SRA
             state_Sra: begin
                 if (counter == 5'b00000) begin//AQUI
-                    ShiftSrc         =   1'b1; ////
-                    ShiftAmt               =   1'b1; ////
+                    ShiftSrc            =   1'b1; ////
+                    ShiftAmt            =   1'b1; ////
                     Shift               =   3'b001; ////
 
                     //next state
@@ -931,7 +944,7 @@ always @(posedge clk) begin
                     //next state
                     states = state_Xchg;
                     counter = counter + 5'b00001;
-                end else if (counter == 5'b001010) begin
+                end else if (counter == 5'b01010) begin
                     AddressCtrl         =   3'b101; ////
                     MemWR               =   1'b1; ////
                     WriteMemoSrc        =   1'b0; ////
@@ -961,7 +974,11 @@ always @(posedge clk) begin
                     RegDst                =   2'b00; ////
                     RegSrc                =   3'b101; ////
                     RegWrite              =   1'b1; ////
-                    
+
+                    ALUSrcA             =   2'b01; ////
+                    ALUSrcB             =   3'b010; ////
+                    ALU                 =   3'b001; ////
+
                     //next state
                     states = state_Fetch;
                     counter = 5'b00000;
@@ -1126,10 +1143,10 @@ always @(posedge clk) begin
                     states = state_Lb;
                     counter = counter + 5'b00001;
                 end else if (counter == 5'b00101) begin
-                    LStoreSizeCtrl         =   2'b10; ////
-                    RegDst                 =   2'b00; ////
-                    RegSrc                 =   3'b010; ////
-                    RegWrite               =   1'b1; ////
+                    LoadSizeCtrl         =   2'b10; ////
+                    RegDst               =   2'b00; ////
+                    RegSrc               =   3'b100; ////
+                    RegWrite             =   1'b1; ////
 
                     //next state
                     states = state_Fetch;
@@ -1165,10 +1182,10 @@ always @(posedge clk) begin
                     states = state_Lh;
                     counter = counter + 5'b00001;
                 end else if (counter == 5'b00101) begin
-                    LStoreSizeCtrl         =   2'b01; ////
-                    RegDst                 =   2'b00; ////
-                    RegSrc                 =   3'b010; ////
-                    RegWrite               =   1'b1; ////
+                    LoadSizeCtrl         =   2'b01; ////
+                    RegDst               =   2'b00; ////
+                    RegSrc               =   3'b100; ////
+                    RegWrite             =   1'b1; ////
 
                     //next state
                     states = state_Fetch;
@@ -1217,10 +1234,10 @@ always @(posedge clk) begin
                     states = state_Lw;
                     counter = counter + 5'b00001;
                 end else if (counter == 5'b00101) begin
-                    LStoreSizeCtrl         =   2'b00; ////
-                    RegDst                 =   2'b00; ////
-                    RegSrc                 =   3'b010; ////
-                    RegWrite               =   1'b1; ////
+                    LoadSizeCtrl         =   2'b00; ////
+                    RegDst               =   2'b00; ////
+                    RegSrc               =   3'b100; ////
+                    RegWrite             =   1'b1; ////
 
                     //next state
                     states = state_Fetch;

@@ -1,8 +1,8 @@
 module SizeStore (
     input [31:0] data_in_MDR, 
     input [31:0] data_in_B, 
-    input [1:0] SizeCtrl,
-    output [31:0] data_out
+    input [1:0] SSizeCtrl,
+    output reg [31:0] data_out
 );
 
 /*
@@ -20,7 +20,7 @@ module SizeStore (
 */
 
     always @(*) begin
-        case(SizeCtrl)
+        case(SSizeCtrl)
             2'b01: data_out = {data_in_MDR[31:16], data_in_B[15:0]};
             2'b10: data_out = {data_in_MDR[31:8], data_in_B[7:0]};
             default: data_out = data_in_B;

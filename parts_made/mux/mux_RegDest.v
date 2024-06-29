@@ -2,10 +2,9 @@ module mux_RegDest (
     input wire [1:0] sel,
     input wire [4:0] data_0, // inst[20:16] (RT)
     input wire [15:0] data_3, // inst[15:11]
-    output wire [4:0] data_out
+    output reg [4:0] data_out
 );
-
-    always @(sel) begin
+    always @(*) begin
         case (sel)
             2'd0: data_out = data_0;
             2'd1: data_out = 5'd31;

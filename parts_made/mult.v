@@ -8,13 +8,6 @@ module mult (
     output wire [31:0] lo
 );
 
-    reg [63:0] result;
-    wire [63:0] out;
-
-    assign out = signal ? ~result + 1 : result;
-    assign hi = out[63:32];
-	assign lo = out[31:0];
-
     parameter N = 32;
 
     reg [31:0] a_in;
@@ -23,6 +16,13 @@ module mult (
     reg signal;
     reg signalA;
     reg signalB;    
+    reg [63:0] result;
+    wire [63:0] out;
+
+    assign out = signal ? ~result + 1 : result;
+    assign hi = out[63:32];
+	assign lo = out[31:0];
+
 
     always @ (posedge clk) begin
         case(multCtrl)

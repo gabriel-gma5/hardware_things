@@ -1,7 +1,7 @@
 module SizeLoad (
     input [31:0] data_in_MDR, 
     input [1:0] LSizeCtrl,
-    output [31:0] data_out
+    output reg [31:0] data_out
 );
 /* 
     O LSizeCtrl é um sinal de 2 bits que determina como os dados de entrada data_in_MDR devem ser manipulados para gerar a saída data_out.
@@ -17,7 +17,7 @@ module SizeLoad (
         Isso significa que data_out é uma cópia direta de data_in_MDR.
 */
 
-    always @(LSizeCtrl) begin
+    always @(*) begin
         case(LSizeCtrl)
             2'b01: data_out = {16'b0, data_in_MDR[15:0]};
             2'b10: data_out = {24'b0, data_in_MDR[7:0]};
