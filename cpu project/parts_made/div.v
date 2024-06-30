@@ -27,6 +27,7 @@ module div (
     reg [5:0] cycleCount, currDigit;
 
     always @ (posedge clk) begin
+        divZero = 1'b1;
 		if (reset) begin
 			numerator=32'b0; denominator=32'b0;
 			quotient=32'b0; remainder=32'b0;
@@ -34,10 +35,9 @@ module div (
 			currDigit=5'd31; cycleCount=5'd0;
             hi=32'b0; lo=32'b0;
 
-			divRun = 0; divZero = 1;
+			divRun = 0; 
 		end
         else if(divCtrl) begin
-            divZero = 1;
             if(srcB == 32'b0) begin
                 divZero = 0;
             end 

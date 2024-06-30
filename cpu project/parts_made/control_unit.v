@@ -597,7 +597,6 @@ always @(posedge clk) begin
                 DivInit             =   1'b1; ////
                 DivOp               =   1'b0; ///
 
-                // DivZero = 0 -> Error detection
                 counter             =   5'b00000; ////
                 states              =   state_MultDivRun;
             end
@@ -859,14 +858,13 @@ always @(posedge clk) begin
                     ALUSrcA            =   2'b00; ////
                     ALUSrcB            =   3'b001; ////
                     ALU                =   3'b010; ////
+                    PCSource            =   2'b00; ////
+                    PCWrite             =   1'b1; ////
 
                     //next state
                     states = state_Break;
                     counter = counter + 5'b00001;
                 end else if (counter == 5'b00001) begin
-                    PCSource            =   2'b10; ////
-                    PCWrite             =   1'b1; ////
-                    
                     states = state_Fetch;
                     counter = 5'b00000;
                 end
