@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-`include "mult.v"
+`include "parts_made/mult.v"
 
 module multiplier_tb;
    parameter n_bits = 32;
@@ -26,7 +26,6 @@ module multiplier_tb;
 		.hi(hi), 
 		.lo(lo)
 	);
-   defparam uut.N = n_bits;
 
    
 	initial
@@ -48,15 +47,15 @@ module multiplier_tb;
         
 		// Add stimulus here
 		reset = 0;
-        a_in = 'd26;
-		b_in = 'd30;
+		a_in = 'd1878982656;
+		b_in = 'd8 ;
 		start = 1;
 		#100
 		start = 0;
 		#(100*n_bits)
         $display("hi = %d, lo = %d", hi, lo);
-		a_in = ~'d13 + 1;
-		b_in = 'd13 ;
+		a_in = 'd1878982656;
+		b_in = 'd8 ;
 		start = 1;
 		#100
 		start = 0;

@@ -7,12 +7,8 @@ module mult (
     output wire [31:0] hi,
     output wire [31:0] lo
 );
-
-    parameter N = 32;
-
-    reg [31:0] a_in;
-    reg [31:0] b_in;
-    reg [N:0] bits;
+    reg [63:0] a_in;
+    reg [63:0] b_in;
     reg signal;
     reg signalA;
     reg signalB;    
@@ -31,7 +27,6 @@ module mult (
                 signalB = srcB[31];
 				a_in = signalA? ~srcA + 1 :    srcA;
 				b_in = signalB? ~srcB + 1 :    srcB;
-				bits = N;
 				result = 0;
                 signal = srcA[31] ^ srcB[31];
 			end
@@ -39,9 +34,8 @@ module mult (
 			1'b0: begin
                 if(b_in[0]==1)
                 begin
-                    result = result + a_in;
+                    result = (result + a_in);
                 end
-                bits = bits - 1;
                 a_in = a_in<<1;
                 b_in = b_in>>1;	
 			end

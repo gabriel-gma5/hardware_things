@@ -37,6 +37,7 @@ module div (
 			divRun = 0; divZero = 1;
 		end
         else if(divCtrl) begin
+            divZero = 1;
             if(srcB == 32'b0) begin
                 divZero = 0;
             end 
@@ -52,9 +53,21 @@ module div (
                 currDigit = 5'd31; cycleCount = 5'd0;
 
                 hi=32'b0; lo=32'b0;
+                
+                remainder = {remainder[29:0],numerator[currDigit]};
+                if(denominator>remainder) begin
+                    quotient = {quotient[29:0], 1'b0};
+                end
+                else begin
+                    remainder = remainder - denominator;
+                    quotient = {quotient[29:0],1'b1};  
+                end
+                cycleCount <= cycleCount+1'b1;
+                currDigit = currDigit-1'b1;
             end
         end
-        else if(!divCtrl & divRun) begin 
+        
+        if(!divCtrl & divRun) begin 
             remainder = {remainder[29:0],numerator[currDigit]};
             if(denominator>remainder) begin
                 quotient = {quotient[29:0], 1'b0};
@@ -66,8 +79,8 @@ module div (
             cycleCount <= cycleCount+1'b1;
             if(cycleCount==5'b11111) begin  // stop div
                 divRun=0;
-                hi = signalQuot && (remainder != 0) ? (denominator - remainder) : remainder;
-                lo = signalQuot ? ~(quotient+ (remainder != 0 ? 1 : 0)) + 1 : quotient;
+                hi = signalA ? ~remainder + 1 : remainder;
+                lo = signalQuot ? ~quotient + 1 : quotient;
             end
             else begin //-1
                 currDigit = currDigit-1'b1;

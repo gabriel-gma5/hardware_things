@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-`include "div.v"
+`include "parts_made/div.v"
 
 module divider_tb;
    parameter n_bits = 32;
@@ -59,8 +59,8 @@ module divider_tb;
 		#(100*n_bits)
         $display("hi = %b, lo = %b, a_in = %b, b_in = %b", hi, lo, a_in, b_in);
         #200
-		a_in = 'd190 ;
-		b_in = 'd13 ;
+		a_in = 'd1 ;
+		b_in = 'd1 ;
 		start = 1;
 		#100
 		start = 0;

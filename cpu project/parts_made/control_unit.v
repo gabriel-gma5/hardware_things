@@ -92,7 +92,7 @@ parameter state_Sub         =       6'b010011;
 parameter state_Break       =       6'b010100;
 parameter state_RTE         =       6'b010101;
 parameter state_Or          =       6'b010110;
-parameter state_Xchg        =       6'b101000;
+parameter state_Xchg        =       6'b111111;
 
 parameter state_Addi        =       6'b010111;
 parameter state_Addiu       =       6'b011000;
@@ -187,6 +187,7 @@ always @(posedge clk) begin
         BranchOption        =   1'b0;
         MultInit            =   1'b0;
         DivInit             =   1'b0;
+        DivOp               =   1'b0;
 
         //next state
         states = state_Fetch;
@@ -209,6 +210,7 @@ always @(posedge clk) begin
         IRWrite             =   1'b0;
         RegWrite            =   1'b0;
         writeHL             =   1'b0;
+        DivOp               =   1'b0;
         A_Load              =   1'b0;
         B_Load              =   1'b0;
         
@@ -338,11 +340,6 @@ always @(posedge clk) begin
                                     states = state_RTE;
                                 end
 
-                                //Funct Xchg
-                                Funct_Xchg: begin
-                                    states = state_Xchg;
-                                end
-
                                 //Funct OR
                                 Funct_Or: begin
                                     states = state_Or;
@@ -451,19 +448,12 @@ always @(posedge clk) begin
 
             //OVERFLOW
             state_Overflow: begin
-                if (counter == 5'b00000) begin
-                    AddressCtrl         =   3'b011; //// 254
-                    MemWR               =   1'b0; ////
+                if (counter == 5'b00000 || counter == 5'b00001 || counter == 5'b00010) begin
+                    AddressCtrl         =   3'b011; ////
                     ALUSrcA             =   2'b00; ////
                     ALUSrcB             =   3'b001; ////
                     ALU                 =   3'b010; ////
                     EPC_Load            =   1'b1; ////
-
-                    //next state
-                    states = state_Overflow;
-                    counter = counter + 5'b00001;
-                end else if (counter == 5'b00001) begin
-                    EPC_Load            =   1'b0; ////
 
                     //next state
                     states = state_Overflow;
@@ -487,18 +477,12 @@ always @(posedge clk) begin
                     ALUSrcA             =   2'b00; ////
                     ALUSrcB             =   3'b001; ////
                     ALU                 =   3'b010; ////
+                    EPC_Load            =   1'b1; ////
 
                     //next state
                     states = state_Opcode404;
                     counter = counter + 5'b00001;
                 end else if (counter == 5'b00011) begin
-                    EPC_Load            =   1'b1; ////
-                    MDR_Load            =   1'b1; ////
-
-                    //next state
-                    states = state_Opcode404;
-                    counter = counter + 5'b00001;
-                end else if (counter == 5'b00100) begin
                     ALUSrcA            =   2'b11; ////
                     PCSource           =   2'b00; ////
                     ALU                =   3'b000; ////
@@ -517,18 +501,12 @@ always @(posedge clk) begin
                     ALUSrcA             =   2'b00; ////
                     ALUSrcB             =   3'b001; ////
                     ALU                 =   3'b010; ////
+                    EPC_Load            =   1'b1; ////
 
                     //next state
                     states = state_Div0;
                     counter = counter + 5'b00001;
                 end else if (counter == 5'b00011) begin
-                    EPC_Load            =   1'b1; ////
-                    MDR_Load            =   1'b1; ////
-
-                    //next state
-                    states = state_Div0;
-                    counter = counter + 5'b00001;
-                end else if (counter == 5'b00100) begin
                     ALUSrcA            =   2'b11; ////
                     PCSource           =   2'b00; ////
                     ALU                =   3'b000; ////
@@ -617,34 +595,30 @@ always @(posedge clk) begin
                 writeHL             =   1'b0; ////
                 HLSrc               =   1'b0; ////
                 DivInit             =   1'b1; ////
+                DivOp               =   1'b0; ///
 
                 // DivZero = 0 -> Error detection
-                if (!DivZero) begin
-                    DivInit             =   1'b0;
-                    states              =   state_Div0;
-                end else begin
-                    counter             =   5'b00000; ////
-                    states              =   state_MultDivRun;
-                end
+                counter             =   5'b00000; ////
+                states              =   state_MultDivRun;
             end
 
             state_MultDivRun: begin
                 if (DivInit || MultInit) begin
-                    if (DivInit && !DivZero) begin
-                        states = state_Div0;
-                        DivInit = 1'b0;
-                    end else begin
-                        states = state_MultDivRun;
-                        DivInit = 1'b0;
-                        MultInit = 1'b0;
-                    end
+                    states = state_MultDivRun;
+                    DivInit = 1'b0;
+                    MultInit = 1'b0;
                 end else if (counter == 5'b11111) begin
                     writeHL = 1'b1;
                     states = state_Fetch;
                     counter = 5'b00000;
                 end else begin
-                    states = state_MultDivRun;
-                    counter = counter + 5'b00001;
+                    if (!DivZero) begin
+                        states = state_Div0;
+                        DivInit = 1'b0;
+                    end else begin
+                        states = state_MultDivRun;
+                        counter = counter + 5'b00001;
+                    end
                 end
             end
 
@@ -709,17 +683,17 @@ always @(posedge clk) begin
                     //next state
                     states = state_Sll;
                     counter = counter + 5'b00001;
-                end else if (counter == 5'b00001 || counter == 5'b00010) begin
+                end else if (counter == 5'b00001) begin
                     Shift               =   3'b010; ////
 
                     //next state
                     states = state_Sll;
                     counter = counter + 5'b00001;
-                end else if (counter == 5'b00011) begin
+                end else if (counter == 5'b00010) begin
                     Shift               =   3'b000; ////
                     RegDst              =   2'b11; ////
                     RegSrc              =   3'b010; ////
-                    RegWrite            =   1'b0; ////
+                    RegWrite            =   1'b1; ////
 
                     //next state
                     states = state_Fetch;
@@ -737,17 +711,17 @@ always @(posedge clk) begin
                     //next state
                     states = state_Sllv;
                     counter = counter + 5'b00001;
-                end else if (counter == 5'b00001 || counter == 5'b00010) begin
+                end else if (counter == 5'b00001) begin
                     Shift            =   3'b010; ////
 
                     //next state
                     states = state_Sllv;
                     counter = counter + 5'b00001;
-                end else if (counter == 5'b00011) begin
-                    Shift               =   3'b000; ////
+                end else if (counter == 5'b00010) begin
+                    Shift            =   3'b000; ////
                     RegDst           =   2'b11; ////
                     RegSrc           =   3'b010; ////
-                    RegWrite         =   1'b0; ////
+                    RegWrite         =   1'b1; ////
 
                     //next state
                     states = state_Fetch;
@@ -779,16 +753,17 @@ always @(posedge clk) begin
                     //next state
                     states = state_Sra;
                     counter = counter + 5'b00001;
-                end else if (counter == 5'b00001 || counter ==  5'b00010) begin
+                end else if (counter == 5'b00001) begin
                     Shift               =   3'b100; ////
 
                     //next state
                     states = state_Sra;
                     counter = counter + 5'b00001;
-                end else if (counter == 5'b00011) begin
+                end else if (counter == 5'b00010) begin
                     RegDst              =   2'b11; ////
-                    RegSrc              =   3'b101; ////
+                    RegSrc              =   3'b010; ////
                     Shift               =   3'b000; ////
+                    RegWrite            =   1'b1; ////
 
                     //next state
                     states = state_Fetch;
@@ -806,7 +781,7 @@ always @(posedge clk) begin
                     //next state
                     states = state_Srav;
                     counter = counter + 5'b00001;
-                end else if (counter == 5'b00001 || counter == 5'b00010) begin
+                end else if (counter == 5'b00001) begin
                     Shift               =   3'b100; ////
 
                     //next state
@@ -914,29 +889,19 @@ always @(posedge clk) begin
                 if (counter == 5'b00000 || counter == 5'b00001 || counter == 5'b00010) begin
                     AddressCtrl         =   3'b101; ////
                     ALUOutSrc           =   3'b000; ////
-
-                    //next state
-                    states = state_Xchg;
-                    counter = counter + 5'b00001;
-                end else if (counter == 5'b00011) begin
                     ALUOut_Load         =   1'b1; ////
-                    MDR_Load            =   1'b1; ////
-                    //Erro de overflow so deve ser analisado apos o calculo
+
+                    //next state
                     states = state_Xchg;
                     counter = counter + 5'b00001;
-                end else if (counter == 5'b00100 || counter == 5'b00101 || counter == 5'b00101) begin
+                end else if (counter == 5'b00011 || counter == 5'b00100 || counter == 5'b00101) begin
                     AddressCtrl         =   3'b110; ////
-
-                    //next state
-                    states = state_Xchg;
-                    counter = counter + 5'b00001;
-                end else if (counter == 5'b00111) begin
                     MDR_Load            =   1'b1; ////
 
                     //next state
                     states = state_Xchg;
                     counter = counter + 5'b00001;
-                end else if (counter == 5'b01000) begin
+                end else if (counter == 5'b00110 || counter == 5'b00111) begin
                     AddressCtrl         =   3'b110; ////
                     MemWR               =   1'b1; ////
                     WriteMemoSrc        =   1'b1; ////
@@ -944,12 +909,16 @@ always @(posedge clk) begin
                     //next state
                     states = state_Xchg;
                     counter = counter + 5'b00001;
-                end else if (counter == 5'b01010) begin
+                end else if (counter == 5'b01000 || counter == 5'b01001) begin
                     AddressCtrl         =   3'b101; ////
+                    StoreSizeCtrl       =   2'b11; ////
                     MemWR               =   1'b1; ////
                     WriteMemoSrc        =   1'b0; ////
 
                     //next state
+                    states = state_Xchg;
+                    counter = counter + 5'b00001;
+                end else if (counter == 5'b01010) begin
                     states = state_Fetch;
                     counter = 5'b00000;
                 end
@@ -1096,8 +1065,8 @@ always @(posedge clk) begin
                     MDR_Load            =   1'b1; ////
 
                     //next state
-                    states = state_Div;
-                    counter = 5'b00000;
+                    states = state_Divm;
+                    counter = counter + 5'b00001;
                 end else if (counter == 5'b00101) begin
                     writeHL             =   1'b0; ////
                     HLSrc               =   1'b0; ////
@@ -1325,23 +1294,16 @@ always @(posedge clk) begin
 
             //SLTI
             state_Slti: begin
-                if (counter == 5'b00000) begin
-                    ALUSrcA            =   2'b01; ////
-                    ALUSrcB            =   3'b010; ////
-                    ALU                =   3'b111; ////
+                ALUSrcA             =   2'b01; ////
+                ALUSrcB             =   3'b010; ////
+                ALU                 =   3'b111; ////
+                RegDst              =   2'b00; ////
+                RegSrc              =   3'b001; ////
+                RegWrite            =   1'b1; ////
 
-                    //next state
-                    states = state_Slti;
-                    counter = counter + 5'b00001;
-                end else if (counter == 5'b00001) begin
-                    RegDst              =   2'b00; ////
-                    RegSrc              =   3'b001; ////
-                    RegWrite            =   1'b1; ////
-
-                    //next state
-                    states = state_Fetch;
-                    counter = 5'b00000;
-                end
+                //next state
+                states = state_Fetch;
+                counter = 5'b00000;
             end
 
             //SW

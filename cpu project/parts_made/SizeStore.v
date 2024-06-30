@@ -23,6 +23,7 @@ module SizeStore (
         case(SSizeCtrl)
             2'b01: data_out = {data_in_MDR[31:16], data_in_B[15:0]};
             2'b10: data_out = {data_in_MDR[31:8], data_in_B[7:0]};
+            2'b11: data_out = data_in_MDR;
             default: data_out = data_in_B;
         endcase
     end

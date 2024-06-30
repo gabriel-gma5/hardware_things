@@ -1,7 +1,7 @@
-module mux_divSrcA (
+module mux_divSrc (
     input wire sel,
-    input wire [31:0] data_0, // from A
-    input wire [31:0] data_1, // from MDR
+    input wire [31:0] data_0, // from A (div) or B (divm)
+    input wire [31:0] data_1, // from B (div) or MDR (divm)
     output reg [31:0] data_out
 );
     always @(*) begin

@@ -11,7 +11,7 @@
 `include "../parts_made/mux/mux_ALU_A.v"
 `include "../parts_made/mux/mux_ALU_B.v"
 `include "../parts_made/mux/mux_ALUOut.v"
-`include "../parts_made/mux/mux_divSrcA.v"
+`include "../parts_made/mux/mux_divSrc.v"
 `include "../parts_made/mux/mux_hi&lo.v"
 `include "../parts_made/mux/mux_MemAddr.v"
 `include "../parts_made/mux/mux_MemWD.v"
@@ -53,7 +53,7 @@ module CPU (
     wire[1:0]       mux_PC_selector;
     wire[1:0]       mux_WR_Registers_selector;
     wire[2:0]       mux_WD_Registers_selector;
-    wire            mux_divSrcA_selector;
+    wire            mux_DivOp_selector;
 
     //Control Wires Single Register 
     wire            EPC_Load;
@@ -67,8 +67,7 @@ module CPU (
 
     //Control ULA Useless
     wire            NEGATIVE;
-    wire            EQUAL;
-    wire            LESS;
+    wire            ZERO;
 
     //Control Wires Flags
     wire[1:0]       Store_Size_selector;
@@ -82,8 +81,9 @@ module CPU (
     wire            PCWrite;
     wire            PCWriteCond;
     wire            GT;
-    wire            ZERO;
+    wire            EQUAL;
     wire            OVERFLOW;
+    wire            LESS;
 
     //Control Wires (Mult)
     wire            MultInit;
@@ -91,7 +91,6 @@ module CPU (
     //Control Wires (Div)
     wire            DivInit;
     wire            DivZero;
-    wire            DivOp;
 
     //Data Wires (Registradores)
     wire [31:0]     PC_Out;
@@ -103,7 +102,7 @@ module CPU (
     wire [31:0]     A_Out;
     wire [31:0]     B_Out;
     wire [31:0]     ALUOut_Out;
-    wire [31:0]     srl24_Out; 
+    wire [31:0]     LSByte_reader_out; 
 
     //Data Wires (Mux)
     wire [31:0]     mux_PC_Out;
@@ -114,6 +113,7 @@ module CPU (
     wire [31:0]     mux_High_Out;
     wire [31:0]     mux_Low_Out;
     wire [31:0]     mux_divA_Out;
+    wire [31:0]     mux_divB_Out;
     wire [31:0]     mux_ShiftSrc_Out;
     wire [4:0]      mux_ShiftN_Out;
     wire [31:0]     mux_ALU1_Out; 
@@ -149,7 +149,7 @@ module CPU (
     mux_opt_flag mux_OptFlag_(
         Flag_selector,
         GT,
-        ZERO,
+        EQUAL,
         mux_OptFlag_Out
     );
 
@@ -332,16 +332,23 @@ module CPU (
         Mult_Low_Out
     );
 
-    mux_divSrcA mux_divSrcA_(
-        DivOp,
-        MDR_Out,
+    mux_divSrc mux_divSrcA_(
+        mux_DivOp_selector,
         A_Out,
+        B_Out,
         mux_divA_Out
+    );
+
+    mux_divSrc mux_divSrcB_(
+        mux_DivOp_selector,
+        B_Out,
+        MDR_Out,
+        mux_divB_Out
     );
 
     div div_(
         mux_divA_Out,
-        B_Out,
+        mux_divB_Out,
         clk,
         reset,
         DivInit,
@@ -395,16 +402,16 @@ module CPU (
         Shift_Left26_28_Out
     );
 
-    ShiftRightLogical_24times srl24(
+    LSByte_reader lsbyte_reader(
         Memory_Out,
-        srl24_Out
+        LSByte_reader_out
     );
 
     mux_ALU_A mux_ALU1_(
         mux_ALU_A_selector,
         PC_Out,
         A_Out,
-        srl24_Out,
+        LSByte_reader_out,
         mux_ALU1_Out
     );
 
@@ -474,7 +481,7 @@ module CPU (
         DivZero,
 
         mux_MemWD_selector,
-        mux_divSrcA_selector,
+        mux_DivOp_selector,
         mux_high_low_selector,
         mux_ALU_Out_selector,
         mux_ShiftSrc_selector,
